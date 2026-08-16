@@ -314,6 +314,7 @@ const Dashboard = () => {
               return (
                 <Link
                   to={activity.link}
+                  state={{ from: '/dashboard' }}
                   key={index}
                   className="flex items-center gap-3 p-2.5 rounded-lg border-l-3 hover:bg-gray-50 transition-colors"
                   style={{ borderLeftColor: meta.color, borderLeftWidth: '3px' }}
