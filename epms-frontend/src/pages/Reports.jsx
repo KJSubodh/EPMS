@@ -7,13 +7,18 @@ import { FaChartBar } from 'react-icons/fa';
 
 const Reports = () => {
   const { user } = useSelector((state) => state.auth);
+  const { projects } = useSelector((state) => state.projects);
+  const { tasks } = useSelector((state) => state.tasks);
+  const { users } = useSelector((state) => state.admin);
+  
   const [filterType, setFilterType] = useState('month');
 
-  // You would get these from your actual data/API
-  const totalProjects = 0;
-  const totalTasks = 0;
-  const completionRate = 0;
-  const activeUsers = 0;
+  // Get actual data counts
+  const totalProjects = projects?.length || 0;
+  const totalTasks = tasks?.length || 0;
+  const completedTasks = tasks?.filter(t => t.status === 'DONE' || t.status === 'COMPLETED').length || 0;
+  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const activeUsers = users?.filter(u => u.isActive).length || 0;
 
   return (
     <div>

@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchProjects, deleteProject } from '../../store/slices/projectSlice';
 import ProjectCard from './ProjectCard';
 import ProjectForm from './ProjectForm';
+import ProjectDetail from './ProjectDetail';
 import PageHero from '../common/PageHero';
 import { FaProjectDiagram, FaPlus } from 'react-icons/fa';
 
@@ -13,6 +14,7 @@ const ProjectList = () => {
   const { user } = useSelector((state) => state.auth);
   const [showForm, setShowForm] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [viewingProject, setViewingProject] = useState(null); // For modal view
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
@@ -39,7 +41,13 @@ const ProjectList = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const canCreateProject = user?.role === 'ADMIN';
+  const canCreateProject = user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER';
+
+  // Handle view project - using modal instead of navigation
+  const handleViewProject = (project) => {
+    console.log('Viewing project:', project.id, project.name);
+    setViewingProject(project);
+  };
 
   if (isLoading && projects.length === 0) {
     return (
@@ -110,6 +118,7 @@ const ProjectList = () => {
             <ProjectCard
               key={project.id}
               project={project}
+              onView={() => handleViewProject(project)}
               onEdit={() => {
                 setEditingProject(project);
                 setShowForm(true);
@@ -132,6 +141,20 @@ const ProjectList = () => {
           }}
           onSuccess={() => dispatch(fetchProjects())}
         />
+      )}
+
+      {/* Project Detail Modal - Using the project data directly */}
+      {viewingProject && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <ProjectDetail
+              project={viewingProject}
+              onClose={() => setViewingProject(null)}
+              userRole={user?.role}
+              userId={user?.id}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

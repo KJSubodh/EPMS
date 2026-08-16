@@ -19,6 +19,7 @@ import Profile from './components/profile/index.jsx';
 import NotificationsPage from './pages/Notifications';
 import MyBoard from './pages/MyBoard';
 import Board from './pages/Board';
+import ProjectDetail from './components/projects/ProjectDetail';
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
         <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
         <Route path="/projects" element={<ProtectedRoute><Layout><Projects /></Layout></ProtectedRoute>} />
+        <Route path="/projects/:id" element={<ProtectedRoute><Layout></Layout><ProjectDetail /></ProtectedRoute>} />
         <Route path="/tasks" element={<ProtectedRoute><Layout><Tasks /></Layout></ProtectedRoute>} />
         <Route path="/employees" element={<ProtectedRoute adminOnly><Layout><Employees /></Layout></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute adminOnly><Layout><UserManagement /></Layout></ProtectedRoute>} />

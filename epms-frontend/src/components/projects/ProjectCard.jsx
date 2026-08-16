@@ -1,9 +1,12 @@
 // src/components/projects/ProjectCard.jsx
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FaEdit, FaTrash, FaUsers, FaTasks, FaCalendarAlt } from 'react-icons/fa';
 import { format } from 'date-fns';
 
-const ProjectCard = ({ project, onEdit, onDelete, userRole, userId }) => {
+const ProjectCard = ({ project, onEdit, onDelete, onView, userRole, userId }) => {
+  const navigate = useNavigate();
+
   const getStatusColor = (status) => {
     const colors = {
       PLANNING: 'bg-gray-500',
@@ -34,14 +37,32 @@ const ProjectCard = ({ project, onEdit, onDelete, userRole, userId }) => {
   const canEdit = isAdmin || (isProjectManager && (isCreator || isProjectLead));
   const canDelete = isAdmin;
 
+  // Handle card click - either use onView prop or navigate
+  const handleCardClick = () => {
+    if (onView) {
+      onView();
+    } else {
+      navigate(`/projects/${project.id}`);
+    }
+  };
+
+  // Stop propagation for button clicks so they don't trigger navigation
+  const handleButtonClick = (e, callback) => {
+    e.stopPropagation();
+    if (callback) callback();
+  };
+
   return (
-    <div className="bg-white rounded border border-gray-200 p-4 hover:border-gray-300 transition-colors">
+    <div
+      onClick={handleCardClick}
+      className="bg-white rounded border border-gray-200 p-4 hover:border-gray-300 hover:shadow-md transition-all duration-200 cursor-pointer"
+    >
       <div className="flex justify-between items-start mb-2">
         <h3 className="text-sm font-semibold text-gray-900">{project.name}</h3>
-        <div className="flex gap-0.5">
+        <div className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
           {canEdit && (
             <button
-              onClick={onEdit}
+              onClick={(e) => handleButtonClick(e, onEdit)}
               className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
             >
               <FaEdit className="w-3.5 h-3.5" />
@@ -49,7 +70,7 @@ const ProjectCard = ({ project, onEdit, onDelete, userRole, userId }) => {
           )}
           {canDelete && (
             <button
-              onClick={onDelete}
+              onClick={(e) => handleButtonClick(e, onDelete)}
               className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
             >
               <FaTrash className="w-3.5 h-3.5" />

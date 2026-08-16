@@ -48,7 +48,7 @@ const TaskList = () => {
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          task.projectName?.toLowerCase().includes(searchTerm.toLowerCase());
+      task.projectName?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus ? task.status === filterStatus : true;
     const matchesPriority = filterPriority ? task.priority === filterPriority : true;
     return matchesSearch && matchesStatus && matchesPriority;

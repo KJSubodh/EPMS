@@ -1,7 +1,6 @@
 // src/components/reports/ReportGenerator.jsx
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
-import api from '../../services/api';
 import { toast } from 'react-toastify';
 import { 
   FaFileExcel, 
@@ -11,15 +10,20 @@ import {
   FaUsers,
   FaFileAlt,
   FaEye,
-  FaExternalLinkAlt,
   FaProjectDiagram,
-  FaTasks
+  FaTasks,
+  FaSpinner
 } from 'react-icons/fa';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 const ReportGenerator = () => {
   const { user } = useSelector((state) => state.auth);
+  const { projects } = useSelector((state) => state.projects);
+  const { tasks } = useSelector((state) => state.tasks);
+  const { users } = useSelector((state) => state.admin);
+  
   const [reportType, setReportType] = useState('tasks');
   const [format, setFormat] = useState('json');
   const [isLoading, setIsLoading] = useState(false);
@@ -41,6 +45,59 @@ const ReportGenerator = () => {
     { value: 'pdf', label: 'PDF', icon: FaFilePdf }
   ];
 
+  // ✅ Get data based on report type
+  const getReportData = () => {
+    switch (reportType) {
+      case 'tasks':
+        return tasks || [];
+      case 'projects':
+        return projects || [];
+      case 'employees':
+        return users || [];
+      default:
+        return [];
+    }
+  };
+
+  // ✅ Format data for display
+  const formatDataForDisplay = (data) => {
+    if (!data || data.length === 0) return [];
+
+    switch (reportType) {
+      case 'tasks':
+        return data.map(task => ({
+          ID: task.id,
+          Title: task.title,
+          Status: task.status,
+          Priority: task.priority,
+          'Assigned To': task.assignedToName || 'Unassigned',
+          'Due Date': task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '—',
+          Project: task.projectName || '—'
+        }));
+      case 'projects':
+        return data.map(project => ({
+          ID: project.id,
+          Name: project.name,
+          Status: project.status,
+          'Start Date': project.startDate ? new Date(project.startDate).toLocaleDateString() : '—',
+          'End Date': project.endDate ? new Date(project.endDate).toLocaleDateString() : '—',
+          Members: project.memberCount || 0,
+          Tasks: project.taskCount || 0
+        }));
+      case 'employees':
+        return data.map(user => ({
+          ID: user.id,
+          Name: user.fullName,
+          Email: user.email,
+          Role: user.role,
+          Department: user.department || '—',
+          Status: user.isActive ? 'Active' : 'Inactive'
+        }));
+      default:
+        return data;
+    }
+  };
+
   const generateReport = async () => {
     setIsLoading(true);
     setGeneratedFileUrl(null);
@@ -49,67 +106,90 @@ const ReportGenerator = () => {
     setReportData(null);
     
     try {
+      // ✅ Get actual data from Redux store
+      const rawData = getReportData();
+      
+      if (!rawData || rawData.length === 0) {
+        toast.warning(`No data available for ${reportType} report`);
+        setIsLoading(false);
+        return;
+      }
+
+      const formattedData = formatDataForDisplay(rawData);
+
       if (format === 'pdf') {
-        const response = await api.get(`/reports?type=${reportType}&format=json`);
-        const data = response.data;
-        
-        if (!data.data || data.data.length === 0) {
-          toast.warning('No data available for this report');
-          setIsLoading(false);
-          return;
-        }
-        
-        const pdfBlob = await generatePDFBlob(data.data, reportType);
+        const pdfBlob = await generatePDFBlob(formattedData, reportType);
         const url = URL.createObjectURL(pdfBlob);
         setGeneratedFileUrl(url);
         setGeneratedFileType('pdf');
         setFileBlob(pdfBlob);
         toast.success('PDF report generated successfully!');
-      } else if (format === 'excel' || format === 'csv') {
-        const response = await api.get(`/reports?type=${reportType}&format=${format}`, {
-          responseType: 'blob'
-        });
-        
-        const blob = new Blob([response.data]);
-        const url = URL.createObjectURL(blob);
+      } else if (format === 'excel') {
+        const excelBlob = generateExcelBlob(formattedData, reportType);
+        const url = URL.createObjectURL(excelBlob);
         setGeneratedFileUrl(url);
-        setGeneratedFileType(format);
-        setFileBlob(blob);
-        toast.success(`${format.toUpperCase()} report generated successfully!`);
+        setGeneratedFileType('excel');
+        setFileBlob(excelBlob);
+        toast.success('Excel report generated successfully!');
+      } else if (format === 'csv') {
+        const csvBlob = generateCSVBlob(formattedData, reportType);
+        const url = URL.createObjectURL(csvBlob);
+        setGeneratedFileUrl(url);
+        setGeneratedFileType('csv');
+        setFileBlob(csvBlob);
+        toast.success('CSV report generated successfully!');
       } else {
-        const response = await api.get(`/reports?type=${reportType}&format=json`);
-        setReportData(response.data);
+        // JSON format
+        setReportData({
+          data: formattedData,
+          generatedAt: new Date().toISOString(),
+          type: reportType,
+          count: formattedData.length
+        });
         toast.success('Report generated successfully!');
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to generate report');
+      console.error('Report generation error:', error);
+      toast.error('Failed to generate report: ' + error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // ✅ Generate PDF
   const generatePDFBlob = (data, type) => {
     return new Promise((resolve) => {
       const doc = new jsPDF('landscape', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
       
-      // Header - flat solid color
+      // Header
       doc.setFillColor(21, 19, 33);
       doc.rect(0, 0, pageWidth, 25, 'F');
       
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.text('TaskFlow Report', 14, 16);
+      doc.text('EPMS Report', 14, 16);
       
       doc.setTextColor(200, 200, 200);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Report Type: ${type.replace('-', ' ').toUpperCase()}`, 14, 22);
+      doc.text(`Report Type: ${type.toUpperCase()}`, 14, 22);
       doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - 60, 16);
+      doc.text(`Records: ${data.length}`, pageWidth - 60, 22);
       
       doc.setDrawColor(200, 200, 200);
       doc.line(14, 28, pageWidth - 14, 28);
+      
+      if (data.length === 0) {
+        doc.setFontSize(14);
+        doc.setTextColor(100, 100, 100);
+        doc.text('No data available for this report', pageWidth / 2, 50, { align: 'center' });
+        const pdfBlob = doc.output('blob');
+        resolve(pdfBlob);
+        return;
+      }
       
       const headers = Object.keys(data[0]);
       const rows = data.map(item => headers.map(key => item[key] || 'N/A'));
@@ -123,11 +203,12 @@ const ReportGenerator = () => {
           fillColor: [40, 40, 40],
           textColor: [255, 255, 255],
           fontStyle: 'bold',
-          halign: 'center'
+          halign: 'center',
+          fontSize: 8
         },
         bodyStyles: {
-          fontSize: 8,
-          cellPadding: 3
+          fontSize: 7,
+          cellPadding: 2
         },
         alternateRowStyles: {
           fillColor: [245, 245, 245]
@@ -136,38 +217,56 @@ const ReportGenerator = () => {
           overflow: 'linebreak',
           cellWidth: 'wrap'
         },
-        columnStyles: {
-          0: { cellWidth: 'auto' },
-          1: { cellWidth: 'auto' }
-        },
         didDrawPage: function(data) {
-          const pageHeight = doc.internal.pageSize.getHeight();
-          doc.setFontSize(8);
+          doc.setFontSize(7);
           doc.setTextColor(150, 150, 150);
           doc.text(
-            `Page ${data.pageNumber} - TaskFlow Report`,
+            `Page ${data.pageNumber} - EPMS Report`,
             pageWidth / 2,
-            pageHeight - 10,
+            pageHeight - 8,
             { align: 'center' }
           );
         }
       });
       
-      const finalY = doc.lastAutoTable.finalY + 10;
-      if (finalY < doc.internal.pageSize.getHeight() - 20) {
-        doc.setFontSize(10);
-        doc.setTextColor(50, 50, 50);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Total Records: ${data.length}`, 14, finalY);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text('Generated by TaskFlow', 14, finalY + 6);
-      }
-      
       const pdfBlob = doc.output('blob');
       resolve(pdfBlob);
     });
+  };
+
+  // ✅ Generate Excel
+  const generateExcelBlob = (data, type) => {
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, type.toUpperCase());
+    
+    // Auto column widths
+    const colWidths = [];
+    const headers = Object.keys(data[0] || {});
+    headers.forEach((header, index) => {
+      let maxLen = header.length;
+      data.forEach(row => {
+        const val = String(row[header] || '');
+        if (val.length > maxLen) maxLen = val.length;
+      });
+      colWidths[index] = { wch: Math.min(Math.max(maxLen + 2, 12), 30) };
+    });
+    ws['!cols'] = colWidths;
+    
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    return new Blob([wbout], { type: 'application/octet-stream' });
+  };
+
+  // ✅ Generate CSV
+  const generateCSVBlob = (data, type) => {
+    if (data.length === 0) {
+      return new Blob(['No data available'], { type: 'text/csv' });
+    }
+    
+    const headers = Object.keys(data[0]);
+    const rows = data.map(row => headers.map(h => `"${String(row[h] || '').replace(/"/g, '""')}"`).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    return new Blob([csv], { type: 'text/csv' });
   };
 
   const downloadFile = () => {
@@ -191,39 +290,47 @@ const ReportGenerator = () => {
       return;
     }
     
-    if (format === 'excel' || format === 'csv') {
-      const newWindow = window.open();
-      if (newWindow) {
-        newWindow.document.write(`
-          <html>
-            <head><title>Report Preview - ${reportType.toUpperCase()}</title></head>
-            <body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#f5f5f5;font-family:sans-serif;">
-              <div style="text-align:center;padding:40px;background:white;border-radius:8px;border:1px solid #e5e7eb;max-width:500px;">
-                <div style="font-size:48px;margin-bottom:16px;color:#7C3AED;">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <line x1="16" y1="13" x2="8" y2="13"/>
-                    <line x1="16" y1="17" x2="8" y2="17"/>
-                    <polyline points="10 9 9 9 8 9"/>
-                  </svg>
-                </div>
-                <h2 style="color:#111827;font-size:18px;font-weight:600;">${reportType.toUpperCase()} Report</h2>
-                <p style="color:#6b7280;margin:8px 0;font-size:14px;">File: ${reportType}_report.${format === 'excel' ? 'xlsx' : 'csv'}</p>
-                <div style="margin:16px 0;padding:16px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb;text-align:left;font-size:13px;">
-                  <p><strong>Format:</strong> ${format.toUpperCase()}</p>
-                  <p><strong>Records:</strong> ${reportData?.data?.length || 'N/A'}</p>
-                  <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
-                </div>
-                <button onclick="window.close()" style="padding:8px 24px;background:#111827;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;margin-top:8px;">
-                  Close
-                </button>
-                <p style="margin-top:12px;font-size:11px;color:#9ca3af;">Click download to save the file</p>
+    // For other formats, show a preview window
+    const newWindow = window.open();
+    if (newWindow) {
+      const data = getReportData();
+      const formattedData = formatDataForDisplay(data);
+      newWindow.document.write(`
+        <html>
+          <head><title>Report Preview - ${reportType.toUpperCase()}</title></head>
+          <body style="margin:0;padding:40px;font-family:sans-serif;background:#f5f5f5;">
+            <div style="max-width:800px;margin:0 auto;background:white;padding:30px;border-radius:8px;border:1px solid #e5e7eb;">
+              <h1 style="margin:0 0 8px 0;font-size:24px;color:#111827;">${reportType.toUpperCase()} Report</h1>
+              <p style="margin:0 0 20px 0;color:#6b7280;font-size:14px;">Generated: ${new Date().toLocaleString()} • ${formattedData.length} records</p>
+              <div style="overflow-x:auto;border:1px solid #e5e7eb;border-radius:6px;">
+                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                  <thead style="background:#f9fafb;">
+                    <tr>
+                      ${Object.keys(formattedData[0] || {}).map(h => 
+                        `<th style="padding:10px 12px;text-align:left;font-weight:600;color:#374151;border-bottom:2px solid #e5e7eb;">${h}</th>`
+                      ).join('')}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${formattedData.slice(0, 20).map(row => `
+                      <tr>
+                        ${Object.values(row).map(val => 
+                          `<td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;color:#4b5563;">${val || '—'}</td>`
+                        ).join('')}
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
               </div>
-            </body>
-          </html>
-        `);
-      }
+              ${formattedData.length > 20 ? `<p style="margin-top:12px;font-size:12px;color:#9ca3af;">Showing first 20 of ${formattedData.length} records</p>` : ''}
+              <div style="margin-top:20px;display:flex;gap:12px;">
+                <button onclick="window.close()" style="padding:8px 20px;background:#111827;color:white;border:none;border-radius:6px;cursor:pointer;">Close</button>
+                <button onclick="window.location.href='${generatedFileUrl}'" style="padding:8px 20px;background:#7C3AED;color:white;border:none;border-radius:6px;cursor:pointer;">Download File</button>
+              </div>
+            </div>
+          </body>
+        </html>
+      `);
     }
   };
 
@@ -288,13 +395,22 @@ const ReportGenerator = () => {
     return formatOptions.find(f => f.value === format) || formatOptions[0];
   };
 
+  // Get data count
+  const getDataCount = () => {
+    const data = getReportData();
+    return data?.length || 0;
+  };
+
   return (
     <div className="space-y-4">
-      {/* Report Type Selection - Flat cards */}
+      {/* Report Type Selection */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {reportTypes.map((type) => {
           const Icon = type.icon;
           const isSelected = reportType === type.value;
+          const count = type.value === 'tasks' ? tasks?.length || 0 : 
+                       type.value === 'projects' ? projects?.length || 0 : 
+                       users?.length || 0;
           return (
             <button
               key={type.value}
@@ -317,7 +433,9 @@ const ReportGenerator = () => {
                   <h3 className={`text-sm font-medium ${isSelected ? 'text-gray-900' : 'text-gray-700'}`}>
                     {type.label}
                   </h3>
-                  <p className="text-[10px] text-gray-400 mt-0.5">Export in multiple formats</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {count} records available
+                  </p>
                 </div>
               </div>
             </button>
@@ -325,7 +443,7 @@ const ReportGenerator = () => {
         })}
       </div>
 
-      {/* Report Controls - Flat */}
+      {/* Report Controls */}
       <div className="bg-white rounded border border-gray-200 p-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
@@ -357,12 +475,12 @@ const ReportGenerator = () => {
           <div className="flex items-end gap-2">
             <button
               onClick={generateReport}
-              disabled={isLoading}
-              className="flex items-center justify-center gap-2 px-4 py-1.5 bg-[#7C3AED] text-white rounded text-xs font-medium hover:bg-[#6D28D9] transition-colors min-w-[100px]"
+              disabled={isLoading || getDataCount() === 0}
+              className="flex items-center justify-center gap-2 px-4 py-1.5 bg-[#7C3AED] text-white rounded text-xs font-medium hover:bg-[#6D28D9] transition-colors min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>
-                  <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  <FaSpinner className="w-3 h-3 animate-spin" />
                   Generating...
                 </>
               ) : (
@@ -421,6 +539,7 @@ const ReportGenerator = () => {
             <button
               onClick={() => { setReportType('tasks'); setFormat('excel'); setTimeout(() => generateReport(), 150); }}
               className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-200 text-gray-700 rounded hover:bg-gray-100 transition-colors text-[10px] font-medium"
+              disabled={tasks?.length === 0}
             >
               <FaFileExcel className="w-3 h-3 text-green-600" />
               Tasks → Excel
@@ -428,6 +547,7 @@ const ReportGenerator = () => {
             <button
               onClick={() => { setReportType('projects'); setFormat('pdf'); setTimeout(() => generateReport(), 150); }}
               className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-200 text-gray-700 rounded hover:bg-gray-100 transition-colors text-[10px] font-medium"
+              disabled={projects?.length === 0}
             >
               <FaFilePdf className="w-3 h-3 text-red-600" />
               Projects → PDF
@@ -435,6 +555,7 @@ const ReportGenerator = () => {
             <button
               onClick={() => { setReportType('employees'); setFormat('csv'); setTimeout(() => generateReport(), 150); }}
               className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-200 text-gray-700 rounded hover:bg-gray-100 transition-colors text-[10px] font-medium"
+              disabled={users?.length === 0}
             >
               <FaFileCsv className="w-3 h-3 text-cyan-600" />
               Employees → CSV
@@ -442,6 +563,7 @@ const ReportGenerator = () => {
             <button
               onClick={() => { setReportType('tasks'); setFormat('csv'); setTimeout(() => generateReport(), 150); }}
               className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-200 text-gray-700 rounded hover:bg-gray-100 transition-colors text-[10px] font-medium"
+              disabled={tasks?.length === 0}
             >
               <FaFileCsv className="w-3 h-3 text-cyan-600" />
               Tasks → CSV
@@ -464,7 +586,7 @@ const ReportGenerator = () => {
                 Report Preview
               </h2>
               <p className="text-[10px] text-gray-400 font-mono">
-                Generated on: {new Date(reportData.generatedAt).toLocaleString()}
+                {reportData.count} records • Generated: {new Date(reportData.generatedAt).toLocaleString()}
               </p>
             </div>
             <div className="flex gap-1.5">
