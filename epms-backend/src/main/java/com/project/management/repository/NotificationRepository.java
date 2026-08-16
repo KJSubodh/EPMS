@@ -1,0 +1,26 @@
+package com.project.management.repository;
+
+import com.project.management.model.Notification;
+import com.project.management.enums.NotificationType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface NotificationRepository extends JpaRepository<Notification, Long> {
+    
+    List<Notification> findByUserIdOrderByCreatedAtDesc(Long userId);
+    
+    List<Notification> findByUserIdAndIsReadFalse(Long userId);
+    
+    Long countByUserIdAndIsReadFalse(Long userId);
+    
+    @Modifying
+    @Query("UPDATE Notification n SET n.isRead = true WHERE n.user.id = :userId")
+    void markAllAsRead(Long userId);
+    
+    List<Notification> findByTaskId(Long taskId);
+}

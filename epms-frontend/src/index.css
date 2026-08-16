@@ -1,0 +1,402 @@
+/* ✅ @import must be at the VERY TOP */
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+
+/* ============================================
+   BASE LAYER
+   ============================================ */
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  /* Dark mode base */
+  .dark body {
+    @apply bg-gray-900 text-gray-100;
+  }
+}
+
+/* ============================================
+   COMPONENTS LAYER
+   ============================================ */
+@layer components {
+  /* Buttons */
+  .btn-primary {
+    @apply px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-secondary {
+    @apply px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors;
+  }
+  
+  .btn-danger {
+    @apply px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors;
+  }
+  
+  .btn-success {
+    @apply px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors;
+  }
+
+  /* Dark mode buttons */
+  .dark .btn-primary {
+    @apply bg-blue-500 hover:bg-blue-600;
+  }
+  
+  .dark .btn-secondary {
+    @apply bg-gray-700 text-gray-200 hover:bg-gray-600;
+  }
+  
+  .dark .btn-danger {
+    @apply bg-red-500 hover:bg-red-600;
+  }
+  
+  .dark .btn-success {
+    @apply bg-green-500 hover:bg-green-600;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow;
+  }
+  
+  .dark .card {
+    @apply bg-gray-800 border-gray-700 shadow-gray-900/30 hover:shadow-gray-900/50;
+  }
+
+  /* Form Inputs */
+  .input-field {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white text-gray-900;
+  }
+  
+  .dark .input-field {
+    @apply bg-gray-800 border-gray-600 text-gray-100 focus:ring-blue-400;
+  }
+  
+  .dark .input-field::placeholder {
+    @apply text-gray-400;
+  }
+
+  .label-field {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+  
+  .dark .label-field {
+    @apply text-gray-300;
+  }
+
+  /* Badges */
+  .badge {
+    @apply px-2.5 py-0.5 text-xs font-medium rounded-full;
+  }
+  
+  .badge-success {
+    @apply bg-green-100 text-green-800;
+  }
+  
+  .dark .badge-success {
+    @apply bg-green-900/40 text-green-300;
+  }
+  
+  .badge-warning {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+  
+  .dark .badge-warning {
+    @apply bg-yellow-900/40 text-yellow-300;
+  }
+  
+  .badge-danger {
+    @apply bg-red-100 text-red-800;
+  }
+  
+  .dark .badge-danger {
+    @apply bg-red-900/40 text-red-300;
+  }
+  
+  .badge-info {
+    @apply bg-blue-100 text-blue-800;
+  }
+  
+  .dark .badge-info {
+    @apply bg-blue-900/40 text-blue-300;
+  }
+  
+  .badge-gray {
+    @apply bg-gray-100 text-gray-800;
+  }
+  
+  .dark .badge-gray {
+    @apply bg-gray-700 text-gray-300;
+  }
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.2s ease-out forwards;
+}
+
+/* ============================================
+   DARK MODE - GLOBAL OVERRIDES
+   ============================================ */
+.dark {
+  color-scheme: dark;
+}
+
+/* Backgrounds */
+.dark .bg-white {
+  background-color: rgb(31 41 55) !important;
+}
+
+.dark .bg-gray-50 {
+  background-color: rgb(17 24 39) !important;
+}
+
+.dark .bg-gray-100 {
+  background-color: rgb(55 65 81) !important;
+}
+
+.dark .bg-gray-200 {
+  background-color: rgb(75 85 99) !important;
+}
+
+.dark .bg-gray-50\/80 {
+  background-color: rgba(17, 24, 39, 0.8) !important;
+}
+
+.dark .bg-gray-50\/50 {
+  background-color: rgba(17, 24, 39, 0.5) !important;
+}
+
+/* Text Colors */
+.dark .text-gray-900 {
+  color: rgb(243 244 246) !important;
+}
+
+.dark .text-gray-800 {
+  color: rgb(229 231 235) !important;
+}
+
+.dark .text-gray-700 {
+  color: rgb(209 213 219) !important;
+}
+
+.dark .text-gray-600 {
+  color: rgb(156 163 175) !important;
+}
+
+.dark .text-gray-500 {
+  color: rgb(107 114 128) !important;
+}
+
+.dark .text-gray-400 {
+  color: rgb(156 163 175) !important;
+}
+
+.dark .text-gray-300 {
+  color: rgb(209 213 219) !important;
+}
+
+/* Borders */
+.dark .border-gray-200 {
+  border-color: rgb(55 65 81) !important;
+}
+
+.dark .border-gray-100 {
+  border-color: rgb(55 65 81) !important;
+}
+
+.dark .border-gray-300 {
+  border-color: rgb(75 85 99) !important;
+}
+
+/* Hover States */
+.dark .hover\:bg-gray-100:hover {
+  background-color: rgb(55 65 81) !important;
+}
+
+.dark .hover\:bg-gray-50:hover {
+  background-color: rgba(31, 41, 55, 0.8) !important;
+}
+
+.dark .hover\:border-gray-300:hover {
+  border-color: rgb(75 85 99) !important;
+}
+
+/* Blue variants for dark mode */
+.dark .bg-blue-50 {
+  background-color: rgba(30, 58, 138, 0.3) !important;
+}
+
+.dark .text-blue-600 {
+  color: rgb(96 165 250) !important;
+}
+
+.dark .text-blue-700 {
+  color: rgb(147 197 253) !important;
+}
+
+.dark .border-blue-200 {
+  border-color: rgb(30 58 138) !important;
+}
+
+.dark .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .shadow-md {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark .shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Scrollbar for dark mode */
+.dark ::-webkit-scrollbar-track {
+  background: rgb(31 41 55);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgb(75 85 99);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgb(107 114 128);
+}
+
+/* Selection color */
+.dark ::selection {
+  background: rgb(30 58 138);
+  color: white;
+}
+
+/* Placeholder text */
+.dark .placeholder-gray-400::placeholder {
+  color: rgb(107 114 128) !important;
+}
+
+/* Dropdown menus in dark mode */
+.dark select {
+  background-color: rgb(31 41 55);
+  color: rgb(243 244 246);
+}
+
+.dark select option {
+  background-color: rgb(31 41 55);
+  color: rgb(243 244 246);
+}
+
+/* Toast notifications in dark mode */
+.dark .Toastify__toast {
+  background-color: rgb(31 41 55) !important;
+  color: rgb(243 244 246) !important;
+}
+
+.dark .Toastify__toast-body {
+  color: rgb(243 244 246) !important;
+}
+
+/* Shimmer animation for saving state */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1s ease-in-out infinite;
+}
+
+/* Pulse once for success state */
+@keyframes pulse-once {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+.animate-pulse-once {
+  animation: pulse-once 0.4s ease-out forwards;
+}
+
+/* Add to your index.css or App.css */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-slideDown {
+  animation: slideDown 0.2s ease-out;
+}
+
+/* Custom scrollbar for sidebar */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 9999px;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #374151;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #d1d5db;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
