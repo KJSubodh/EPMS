@@ -22,18 +22,25 @@ EPMS allows organizations to manage projects, assign and track tasks, collaborat
 - Full CRUD for projects and tasks
 - Project team membership with per-member roles (`PROJECT_LEAD`, `MEMBER`, `OBSERVER`)
 - Task status workflow (`TODO`, `IN_PROGRESS`, `REVIEW`, `DONE`, `BLOCKED`) and priority levels (`MINOR`, `MEDIUM`, `MAJOR`, `CRITICAL`)
-- Kanban-style board positioning for tasks
+- **Kanban board with drag-and-drop** — task status/position updates persisted on drop
 - Role-aware visibility — employees see their own work, managers and admins see everything they're responsible for
+
+### User & Organization Management
+- Department and designation management (create/assign, used for filtering and reporting)
+- Employee ID tracking with uniqueness validation
+- Account activation/deactivation with audit trail
 
 ### Collaboration
 - Threaded comments on tasks (supports nested replies)
+- **@Mentions** in comments with user suggestions and targeted notifications
 - File attachments on tasks
-- In-app notification center covering task assignment, updates, completion, and project lifecycle events
+- In-app notification center covering task assignment, updates, completion, mentions, and project lifecycle events
 - Async email notifications (SMTP via `JavaMailSender`, Thymeleaf templates, retry on failure) so email delivery never blocks the request thread
 
-### Reporting
+### Reporting & Analytics
 - Generate reports in **PDF** (iText), **Excel** (Apache POI), and **CSV**
 - Streaming CSV export for large datasets
+- **Analytics dashboard** with KPI cards, project status distribution (pie chart), priority distribution (doughnut chart), 30-day task trend (line chart), and team performance (bar chart)
 
 ### Search & Audit
 - Backend search across users, projects, and tasks
@@ -57,6 +64,8 @@ EPMS allows organizations to manage projects, assign and track tasks, collaborat
 - React Router
 - Axios
 - Tailwind CSS
+- Chart.js (analytics dashboard)
+- Drag-and-drop (Kanban board)
 
 **Tooling**
 - Maven
@@ -79,16 +88,16 @@ with DTOs for request/response boundaries, centralized exception handling, and J
 
 Eight core tables:
 
-| Table              | Purpose                                                      |
-|---------------------|---------------------------------------------------------------|
-| `users`             | Accounts, roles, department/designation, active status        |
-| `projects`          | Project metadata, status, ownership (`created_by`)             |
-| `project_members`   | Many-to-many project ↔ user, with a per-project role           |
-| `tasks`             | Task details, status, priority, assignment, project linkage    |
-| `comments`          | Task discussion, with self-referencing `parent_id` for threads |
-| `notifications`     | In-app notifications per user, optionally linked to a task     |
-| `task_documents`    | File attachment metadata for tasks                             |
-| `audit_logs`        | Action history with JSONB change tracking                      |
+| Table              | Purpose                                                        |
+|--------------------|-----------------------------------------------------------------|
+| `users`            | Accounts, roles, department/designation, active status          |
+| `projects`         | Project metadata, status, ownership (`created_by`)               |
+| `project_members`  | Many-to-many project ↔ user, with a per-project role             |
+| `tasks`            | Task details, status, priority, assignment, project linkage      |
+| `comments`         | Task discussion, with self-referencing `parent_id` for threads   |
+| `notifications`    | In-app notifications per user, optionally linked to a task       |
+| `task_documents`   | File attachment metadata for tasks                               |
+| `audit_logs`       | Action history with JSONB change tracking                        |
 
 Key relationships:
 - `Project 1 —* Task`
@@ -184,6 +193,9 @@ The app will be available at `http://localhost:5173`.
 | POST   | `/api/tasks/{id}/documents`        | Upload a file attachment            |
 | GET    | `/api/notifications`               | Get current user's notifications    |
 | GET    | `/api/reports`                     | Generate a report (PDF/Excel/CSV)   |
+| GET    | `/api/analytics`                   | Get dashboard KPIs and chart data   |
+| GET    | `/api/departments`                 | List departments                    |
+| GET    | `/api/designations`                | List designations                   |
 | GET    | `/api/search?query=`               | Search across users/projects/tasks  |
 
 > Full endpoint list and request/response schemas are available in the Postman collection (`/docs/postman`).
