@@ -202,17 +202,6 @@ The app will be available at `http://localhost:5173`.
 
 ---
 
-## Roadmap
-
-- [ ] Async report generation with email-on-ready notification
-- [ ] Full-text/fuzzy search (Elasticsearch)
-- [ ] Redis caching for dashboard aggregates
-- [ ] Docker Compose setup for one-command local environment
-- [ ] Integration tests with Testcontainers
-- [ ] "Due within 24 hours" notification type
-
----
-
 ## License
 
 This project is available for personal and educational use.
