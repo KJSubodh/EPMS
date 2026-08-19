@@ -20,9 +20,9 @@ import NotificationsPage from './pages/Notifications';
 import MyBoard from './pages/MyBoard';
 import Board from './pages/Board';
 import ProjectDetailPage from './pages/ProjectDetailPage';
-import NewProject from './pages/NewProject';
-import NewTask from './pages/NewTask';
 import TaskDetailPage from './pages/TaskDetailPage';
+
+import Analytics from './pages/Analytics';
 
 function App() {
   return (
@@ -38,12 +38,12 @@ function App() {
         {/* Projects: specific paths ("new") must come before the ":id" wildcard,
             or "/projects/new" will match ":id" with id="new". */}
         <Route path="/projects" element={<ProtectedRoute><Layout><Projects /></Layout></ProtectedRoute>} />
-        <Route path="/projects/new" element={<ProtectedRoute><Layout><NewProject /></Layout></ProtectedRoute>} />
+        <Route path="/projects/new" element={<ProtectedRoute><Layout><Projects /></Layout></ProtectedRoute>} />
         <Route path="/projects/:id" element={<ProtectedRoute><Layout><ProjectDetailPage /></Layout></ProtectedRoute>} />
 
         {/* Tasks: same ordering rule applies here. */}
         <Route path="/tasks" element={<ProtectedRoute><Layout><Tasks /></Layout></ProtectedRoute>} />
-        <Route path="/tasks/new" element={<ProtectedRoute><Layout><NewTask /></Layout></ProtectedRoute>} />
+        <Route path="/tasks/new" element={<ProtectedRoute><Layout><Tasks /></Layout></ProtectedRoute>} />
         <Route path="/tasks/:id" element={<ProtectedRoute><Layout><TaskDetailPage /></Layout></ProtectedRoute>} />
 
         <Route path="/employees" element={<ProtectedRoute adminOnly><Layout><Employees /></Layout></ProtectedRoute>} />
@@ -106,6 +106,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route path="/analytics" element={<ProtectedRoute><Layout><Analytics /></Layout></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

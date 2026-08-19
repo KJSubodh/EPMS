@@ -1,4 +1,3 @@
-// models/Comment.java
 package com.project.management.model;
 
 import jakarta.persistence.*;
@@ -23,7 +22,7 @@ public class Comment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
     @ManyToOne
@@ -39,7 +38,16 @@ public class Comment {
     private Comment parent;
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
     private List<Comment> replies = new ArrayList<>();
+
+    // ✅ ADD THIS: For tracking mentioned users
+    @ElementCollection
+    @CollectionTable(name = "comment_mentions", 
+        joinColumns = @JoinColumn(name = "comment_id"))
+    @Column(name = "mentioned_user_id")
+    @Builder.Default
+    private List<Long> mentionedUserIds = new ArrayList<>();
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

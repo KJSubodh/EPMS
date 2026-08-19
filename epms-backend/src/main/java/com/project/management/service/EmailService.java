@@ -1,7 +1,7 @@
 // service/EmailService.java
 package com.project.management.service;
 
-import com.project.management.dao.UserDao;  // ✅ Add this import
+import com.project.management.dao.UserDao; // ✅ Add this import
 import com.project.management.model.Task;
 import com.project.management.model.User;
 import com.project.management.model.Comment;
@@ -31,11 +31,11 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
-    private final UserDao userDao;  // ✅ Add this field
-    
+    private final UserDao userDao; // ✅ Add this field
+
     @Value("${app.email.from}")
     private String fromEmail;
-    
+
     @Value("${app.email.base-url}")
     private String baseUrl;
 
@@ -53,7 +53,7 @@ public class EmailService {
 
         try {
             String subject = "🔔 Task Assigned: " + task.getTitle();
-            
+
             Context context = new Context(Locale.ENGLISH);
             context.setVariable("userName", assignee.getFullName());
             context.setVariable("taskTitle", task.getTitle());
@@ -65,10 +65,10 @@ public class EmailService {
             context.setVariable("assignedBy", task.getCreatedBy().getFullName());
             context.setVariable("taskLink", baseUrl + "/tasks/" + task.getId());
             context.setVariable("year", LocalDate.now().getYear());
-            
+
             String htmlContent = templateEngine.process("email/task-assignment", context);
             sendEmail(assignee.getEmail(), subject, htmlContent);
-            
+
             log.info("Task assignment email sent to: {}", assignee.getEmail());
         } catch (Exception e) {
             log.error("Failed to send task assignment email to {}: {}", assignee.getEmail(), e.getMessage());
@@ -86,7 +86,7 @@ public class EmailService {
 
         try {
             String subject = "⏰ Task Due Tomorrow: " + task.getTitle();
-            
+
             Context context = new Context(Locale.ENGLISH);
             context.setVariable("userName", assignee.getFullName());
             context.setVariable("taskTitle", task.getTitle());
@@ -97,10 +97,10 @@ public class EmailService {
             context.setVariable("projectName", task.getProject().getName());
             context.setVariable("taskLink", baseUrl + "/tasks/" + task.getId());
             context.setVariable("year", LocalDate.now().getYear());
-            
+
             String htmlContent = templateEngine.process("email/due-reminder", context);
             sendEmail(assignee.getEmail(), subject, htmlContent);
-            
+
             log.info("Due date reminder sent to: {}", assignee.getEmail());
         } catch (Exception e) {
             log.error("Failed to send due date reminder to {}: {}", assignee.getEmail(), e.getMessage());
@@ -118,7 +118,7 @@ public class EmailService {
 
         try {
             String subject = "✅ Task Completed: " + task.getTitle();
-            
+
             Context context = new Context(Locale.ENGLISH);
             context.setVariable("adminName", task.getCreatedBy().getFullName());
             context.setVariable("taskTitle", task.getTitle());
@@ -127,10 +127,10 @@ public class EmailService {
             context.setVariable("completedDate", LocalDate.now().format(DATE_FORMATTER));
             context.setVariable("taskLink", baseUrl + "/tasks/" + task.getId());
             context.setVariable("year", LocalDate.now().getYear());
-            
+
             String htmlContent = templateEngine.process("email/task-completion", context);
             sendEmail(task.getCreatedBy().getEmail(), subject, htmlContent);
-            
+
             log.info("Task completion email sent to: {}", task.getCreatedBy().getEmail());
         } catch (Exception e) {
             log.error("Failed to send task completion email: {}", e.getMessage());
@@ -148,7 +148,7 @@ public class EmailService {
 
         try {
             String subject = "📊 Daily Task Summary - " + LocalDate.now().format(DATE_FORMATTER);
-            
+
             Context context = new Context(Locale.ENGLISH);
             context.setVariable("userName", user.getFullName());
             context.setVariable("date", LocalDate.now().format(DATE_FORMATTER));
@@ -161,10 +161,10 @@ public class EmailService {
             context.setVariable("tasks", tasks.stream().limit(5).toList());
             context.setVariable("dashboardLink", baseUrl + "/dashboard");
             context.setVariable("year", LocalDate.now().getYear());
-            
+
             String htmlContent = templateEngine.process("email/daily-digest", context);
             sendEmail(user.getEmail(), subject, htmlContent);
-            
+
             log.info("Daily digest sent to: {}", user.getEmail());
         } catch (Exception e) {
             log.error("Failed to send daily digest to {}: {}", user.getEmail(), e.getMessage());
@@ -182,7 +182,7 @@ public class EmailService {
 
         try {
             String subject = "💬 New Comment on: " + task.getTitle();
-            
+
             Context context = new Context(Locale.ENGLISH);
             context.setVariable("userName", recipient.getFullName());
             context.setVariable("commenterName", comment.getUser().getFullName());
@@ -191,10 +191,10 @@ public class EmailService {
             context.setVariable("commentDate", comment.getCreatedAt().format(DATE_FORMATTER));
             context.setVariable("taskLink", baseUrl + "/tasks/" + task.getId());
             context.setVariable("year", LocalDate.now().getYear());
-            
+
             String htmlContent = templateEngine.process("email/comment-notification", context);
             sendEmail(recipient.getEmail(), subject, htmlContent);
-            
+
             log.info("Comment notification sent to: {}", recipient.getEmail());
         } catch (Exception e) {
             log.error("Failed to send comment notification to {}: {}", recipient.getEmail(), e.getMessage());
@@ -212,7 +212,7 @@ public class EmailService {
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(htmlContent, true);
-            
+
             mailSender.send(message);
         } catch (MessagingException e) {
             throw new RuntimeException("Failed to send email: " + e.getMessage());
@@ -223,17 +223,17 @@ public class EmailService {
      * Update email preferences
      */
     public EmailPreferencesResponse updatePreferences(Long userId, EmailPreferencesRequest request) {
-        User user = userDao.findById(userId)  // ✅ Now works because userDao is injected
+        User user = userDao.findById(userId) // ✅ Now works because userDao is injected
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         user.setEmailTaskAssignment(request.getTaskAssignment());
         user.setEmailDueReminders(request.getDueReminders());
         user.setEmailTaskCompletion(request.getTaskCompletion());
         user.setEmailDailyDigest(request.getDailyDigest());
         user.setEmailCommentNotifications(request.getCommentNotifications());
-        
-        userDao.save(user);  // ✅ Now works
-        
+
+        userDao.save(user); // ✅ Now works
+
         return EmailPreferencesResponse.builder()
                 .taskAssignment(user.getEmailTaskAssignment())
                 .dueReminders(user.getEmailDueReminders())
@@ -247,9 +247,9 @@ public class EmailService {
      * Get email preferences
      */
     public EmailPreferencesResponse getPreferences(Long userId) {
-        User user = userDao.findById(userId)  // ✅ Now works because userDao is injected
+        User user = userDao.findById(userId) // ✅ Now works because userDao is injected
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         return EmailPreferencesResponse.builder()
                 .taskAssignment(user.getEmailTaskAssignment())
                 .dueReminders(user.getEmailDueReminders())
@@ -257,5 +257,38 @@ public class EmailService {
                 .dailyDigest(user.getEmailDailyDigest())
                 .commentNotifications(user.getEmailCommentNotifications())
                 .build();
+    }
+
+    // Add this method to EmailService.java
+
+    /**
+     * Send mention notification email
+     */
+    @Async
+    public void sendMentionEmail(User mentionedUser, User mentionedBy, Task task, Comment comment) {
+        if (!mentionedUser.getEmailCommentNotifications()) {
+            return;
+        }
+
+        try {
+            String subject = "🔔 You were mentioned in a comment on: " + task.getTitle();
+
+            Context context = new Context(Locale.ENGLISH);
+            context.setVariable("userName", mentionedUser.getFullName());
+            context.setVariable("mentionerName", mentionedBy.getFullName());
+            context.setVariable("taskTitle", task.getTitle());
+            context.setVariable("taskDescription", task.getDescription());
+            context.setVariable("commentContent", comment.getContent());
+            context.setVariable("commentDate", comment.getCreatedAt().format(DATE_FORMATTER));
+            context.setVariable("taskLink", baseUrl + "/tasks/" + task.getId());
+            context.setVariable("year", LocalDate.now().getYear());
+
+            String htmlContent = templateEngine.process("email/mention-notification", context);
+            sendEmail(mentionedUser.getEmail(), subject, htmlContent);
+
+            log.info("Mention email sent to: {}", mentionedUser.getEmail());
+        } catch (Exception e) {
+            log.error("Failed to send mention email to {}: {}", mentionedUser.getEmail(), e.getMessage());
+        }
     }
 }

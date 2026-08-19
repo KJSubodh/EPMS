@@ -1,6 +1,7 @@
 // src/components/projects/ProjectList.jsx
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { fetchProjects, deleteProject } from '../../store/slices/projectSlice';
 import ProjectCard from './ProjectCard';
 import ProjectForm from './ProjectForm';
@@ -10,6 +11,8 @@ import { FaProjectDiagram, FaPlus } from 'react-icons/fa';
 
 const ProjectList = () => {
   const dispatch = useDispatch();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { projects, isLoading } = useSelector((state) => state.projects);
   const { user } = useSelector((state) => state.auth);
   const [showForm, setShowForm] = useState(false);
@@ -21,6 +24,25 @@ const ProjectList = () => {
   useEffect(() => {
     dispatch(fetchProjects());
   }, [dispatch]);
+
+  const canCreateProject = user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER';
+
+  // Landing directly on /projects/new (e.g. from the Dashboard) opens the
+  // create form over this list instead of rendering it on a blank page.
+  useEffect(() => {
+    if (location.pathname === '/projects/new' && canCreateProject) {
+      setEditingProject(null);
+      setShowForm(true);
+    }
+  }, [location.pathname, canCreateProject]);
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingProject(null);
+    if (location.pathname === '/projects/new') {
+      navigate('/projects');
+    }
+  };
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this project?')) {
@@ -41,11 +63,8 @@ const ProjectList = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const canCreateProject = user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER';
-
   // Handle view project - using modal instead of navigation
   const handleViewProject = (project) => {
-    console.log('Viewing project:', project.id, project.name);
     setViewingProject(project);
   };
 
@@ -135,10 +154,7 @@ const ProjectList = () => {
       {showForm && canCreateProject && (
         <ProjectForm
           project={editingProject}
-          onClose={() => {
-            setShowForm(false);
-            setEditingProject(null);
-          }}
+          onClose={closeForm}
           onSuccess={() => dispatch(fetchProjects())}
         />
       )}

@@ -29,18 +29,62 @@ public class NotificationService {
         return notificationDao.save(notification);
     }
 
-    public void createTaskNotification(User user, Task task, String message) {
-        createNotification(user, message, NotificationType.TASK_ASSIGNED, task);
+    /**
+     * Task-related notification with an explicit type. Use this for
+     * TASK_ASSIGNED, TASK_UPDATED, or TASK_COMPLETED depending on what
+     * actually happened to the task.
+     */
+    public Notification createTaskNotification(User user, Task task, String message, NotificationType type) {
+        return createNotification(user, message, type, task);
     }
 
-    public void createProjectNotification(User user, Project project, String message) {
+    /**
+     * Convenience overload for the common "assigned" case, so existing call
+     * sites that don't pass a type keep compiling and behave exactly as
+     * before (previously this was the *only* option, hardcoded).
+     */
+    public Notification createTaskNotification(User user, Task task, String message) {
+        return createTaskNotification(user, task, message, NotificationType.TASK_ASSIGNED);
+    }
+
+    /**
+     * Project-related notification with an explicit type. Use this for
+     * PROJECT_CREATED, PROJECT_UPDATED, or PROJECT_COMPLETED depending on
+     * what actually happened to the project.
+     */
+    public Notification createProjectNotification(User user, Project project, String message, NotificationType type) {
         Notification notification = Notification.builder()
                 .user(user)
                 .message(message)
-                .type(NotificationType.PROJECT_CREATED)
+                .type(type)
                 .isRead(false)
                 .build();
-        notificationDao.save(notification);
+        return notificationDao.save(notification);
+    }
+
+    /**
+     * Convenience overload for the common "created" case, preserves the
+     * previous behavior for existing call sites.
+     */
+    public Notification createProjectNotification(User user, Project project, String message) {
+        return createProjectNotification(user, project, message, NotificationType.PROJECT_CREATED);
+    }
+
+    /**
+     * Member added to a project. Previously there was no call site that
+     * could ever produce NotificationType.MEMBER_ADDED even though the
+     * frontend has an icon/color ready for it.
+     */
+    public Notification createMemberAddedNotification(User user, Project project, String message) {
+        return createProjectNotification(user, project, message, NotificationType.MEMBER_ADDED);
+    }
+
+    /**
+     * Member removed from a project. Same situation as above for
+     * NotificationType.MEMBER_REMOVED.
+     */
+    public Notification createMemberRemovedNotification(User user, Project project, String message) {
+        return createProjectNotification(user, project, message, NotificationType.MEMBER_REMOVED);
     }
 
     public List<Notification> getNotificationsByUser(Long userId) {

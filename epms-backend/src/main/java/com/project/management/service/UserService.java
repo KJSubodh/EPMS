@@ -6,6 +6,7 @@ import com.project.management.model.User;
 import com.project.management.enums.Role;
 import com.project.management.exception.ResourceNotFoundException;
 import com.project.management.exception.UnauthorizedException;
+import com.project.management.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +24,7 @@ public class UserService implements UserDetailsService { // ✅ Implements UserD
 
     private final UserDao userDao;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -73,7 +76,11 @@ public class UserService implements UserDetailsService { // ✅ Implements UserD
 
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             if (userDao.existsByEmail(request.getEmail())) {
-                throw new RuntimeException("Email already in use by another user");
+                // Was a generic RuntimeException, which typically maps to a
+                // 500 in the default exception handler instead of a clean
+                // 400 - BusinessException matches the convention used
+                // everywhere else in the codebase for validation failures.
+                throw new BusinessException("Email already in use by another user");
             }
             user.setEmail(request.getEmail());
         }
@@ -99,7 +106,11 @@ public class UserService implements UserDetailsService { // ✅ Implements UserD
             }
         }
 
-        return userDao.save(user);
+        User saved = userDao.save(user);
+
+        auditLogService.log("User", id, "UPDATED", currentUser);
+
+        return saved;
     }
 
     @Transactional
@@ -113,12 +124,17 @@ public class UserService implements UserDetailsService { // ✅ Implements UserD
         // Verify old password (unless admin is resetting)
         if (!currentUser.getRole().equals(Role.ADMIN)) {
             if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
-                throw new RuntimeException("Current password is incorrect");
+                throw new BusinessException("Current password is incorrect");
             }
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));
-        return userDao.save(user);
+        User saved = userDao.save(user);
+
+        // No password data goes into the audit log, just the fact that it changed.
+        auditLogService.log("User", id, "PASSWORD_CHANGED", currentUser);
+
+        return saved;
     }
 
     @Transactional
@@ -136,8 +152,20 @@ public class UserService implements UserDetailsService { // ✅ Implements UserD
             }
         }
 
+        Role previousRole = user.getRole();
         user.setRole(newRole);
-        return userDao.save(user);
+        User saved = userDao.save(user);
+
+        // Uses the richer log(...) overload so the audit trail actually
+        // shows what the role change was, not just that "something" changed.
+        auditLogService.log(
+                "User",
+                id,
+                "ROLE_CHANGED",
+                Map.of("from", previousRole.name(), "to", newRole.name()),
+                currentUser);
+
+        return saved;
     }
 
     @Transactional
@@ -148,6 +176,8 @@ public class UserService implements UserDetailsService { // ✅ Implements UserD
         User user = getUserById(id);
         user.setIsActive(true);
         userDao.save(user);
+
+        auditLogService.log("User", id, "ACTIVATED", currentUser);
     }
 
     @Transactional
@@ -158,16 +188,39 @@ public class UserService implements UserDetailsService { // ✅ Implements UserD
         User user = getUserById(id);
         user.setIsActive(false);
         userDao.save(user);
+
+        auditLogService.log("User", id, "DEACTIVATED", currentUser);
     }
 
+    /**
+     * Kept for backward compatibility with existing callers - unaudited,
+     * since there's no actor to attribute the deletion to. Prefer
+     * deleteUser(id, currentUser) below wherever the caller has the actor
+     * available, so account deletions actually show up in the audit trail.
+     */
     @Transactional
     public void deleteUser(Long id) {
         User user = getUserById(id);
         userDao.delete(user);
     }
 
+    @Transactional
+    public void deleteUser(Long id, User currentUser) {
+        User user = getUserById(id);
+        userDao.delete(user);
+
+        auditLogService.log("User", id, "DELETED", currentUser);
+    }
+
     public boolean isUserActive(Long id) {
         User user = getUserById(id);
         return user.getIsActive();
+    }
+
+    public List<User> searchUsers(String query) {
+        if (query == null || query.isEmpty()) {
+            return userDao.findAll();
+        }
+        return userDao.searchByQuery(query);
     }
 }

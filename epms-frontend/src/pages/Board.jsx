@@ -4,12 +4,16 @@ import { useSelector, useDispatch } from 'react-redux';
 import { fetchProjects } from '../store/slices/projectSlice';
 import PageHero from '../components/common/PageHero';
 import KanbanBoard from '../components/kanban/KanbanBoard';
-import { FaColumns, FaProjectDiagram } from 'react-icons/fa';
+import { FaColumns } from 'react-icons/fa';
 
 const Board = () => {
   const dispatch = useDispatch();
   const { projects } = useSelector((state) => state.projects);
+  const { board } = useSelector((state) => state.tasks);
+  const { user } = useSelector((state) => state.auth);
   const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     dispatch(fetchProjects());
@@ -17,9 +21,18 @@ const Board = () => {
 
   useEffect(() => {
     if (projects.length > 0 && !selectedProjectId) {
-      setSelectedProjectId(projects[0].id);
+      setSelectedProjectId(String(projects[0].id));
     }
   }, [projects, selectedProjectId]);
+
+  const canCreateTask = (user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') && !!selectedProjectId;
+
+  // Stats derived from the currently loaded board, mirroring TaskList's hero stats
+  const allTasks = board?.columns?.flatMap((col) => col.tasks || []) || [];
+  const totalTasks = allTasks.length;
+  const completedTasks = allTasks.filter((t) => t.status === 'DONE').length;
+  const inProgressTasks = allTasks.filter((t) => t.status === 'IN_PROGRESS').length;
+  const overdueTasks = allTasks.filter((t) => t.status !== 'DONE' && new Date(t.dueDate) < new Date()).length;
 
   return (
     <div className="space-y-4">
@@ -28,28 +41,30 @@ const Board = () => {
         iconColor="#7C3AED"
         title="Board"
         subtitle="Visualize and manage tasks across projects"
+        stats={[
+          { label: 'Total', value: totalTasks, color: 'bg-gray-700' },
+          { label: 'Completed', value: completedTasks, color: 'bg-green-500' },
+          { label: 'In Progress', value: inProgressTasks, color: 'bg-amber-500' },
+          { label: 'Overdue', value: overdueTasks, color: 'bg-red-500' },
+        ]}
+        searchValue={searchTerm}
+        onSearch={setSearchTerm}
+        searchPlaceholder="Search tasks..."
+        filterOptions={projects.map((project) => ({ value: String(project.id), label: project.name }))}
+        filterValue={selectedProjectId}
+        onFilter={setSelectedProjectId}
+        filterPlaceholder="Select a project..."
+        onCreateClick={canCreateTask ? () => setShowCreateModal(true) : undefined}
+        createLabel="Add Task"
       />
 
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div className="flex items-center gap-4">
-          <FaProjectDiagram className="text-gray-400" />
-          <select
-            value={selectedProjectId}
-            onChange={(e) => setSelectedProjectId(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/20 focus:border-[#7C3AED]"
-          >
-            <option value="">Select a project...</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       {selectedProjectId ? (
-        <KanbanBoard projectId={selectedProjectId} />
+        <KanbanBoard
+          projectId={selectedProjectId}
+          searchTerm={searchTerm}
+          showCreateModal={showCreateModal}
+          onCloseCreateModal={() => setShowCreateModal(false)}
+        />
       ) : (
         <div className="flex flex-col items-center justify-center py-16 bg-white rounded-lg border border-gray-200">
           <FaColumns className="w-12 h-12 text-gray-300 mb-4" />

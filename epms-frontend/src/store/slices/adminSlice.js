@@ -36,7 +36,7 @@ export const changeUserRole = createAsyncThunk(
     'admin/changeUserRole',
     async ({ id, role }, { rejectWithValue }) => {
         try {
-            // CHANGE THIS LINE - use query parameter instead of body
+            // Use query parameter instead of body
             const response = await api.patch(`/admin/users/${id}/role?role=${role}`);
             toast.success('User role updated successfully!');
             return response.data;
@@ -93,11 +93,25 @@ export const fetchUserById = createAsyncThunk(
     }
 );
 
+// ✅ ADD THIS - Search users for @mentions
+export const searchUsers = createAsyncThunk(
+    'admin/searchUsers',
+    async (query, { rejectWithValue }) => {
+        try {
+            const response = await api.get(`/admin/users/search?query=${query}`);
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.message || 'Failed to search users');
+        }
+    }
+);
+
 const initialState = {
     users: [],
     selectedUser: null,
     isLoading: false,
-    error: null
+    error: null,
+    searchResults: [] // ✅ Add this for search results
 };
 
 const adminSlice = createSlice({
@@ -109,6 +123,10 @@ const adminSlice = createSlice({
         },
         clearSelectedUser: (state) => {
             state.selectedUser = null;
+        },
+        // ✅ Add this to clear search results
+        clearSearchResults: (state) => {
+            state.searchResults = [];
         }
     },
     extraReducers: (builder) => {
@@ -219,9 +237,23 @@ const adminSlice = createSlice({
             .addCase(deactivateUser.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.payload;
+            })
+            
+            // ✅ ADD THIS - Search Users (for @mentions)
+            .addCase(searchUsers.pending, (state) => {
+                state.isLoading = true;
+                state.error = null;
+            })
+            .addCase(searchUsers.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.searchResults = action.payload; // Store search results separately
+            })
+            .addCase(searchUsers.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload;
             });
     }
 });
 
-export const { clearError, clearSelectedUser } = adminSlice.actions;
+export const { clearError, clearSelectedUser, clearSearchResults } = adminSlice.actions;
 export default adminSlice.reducer;

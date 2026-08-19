@@ -1,6 +1,6 @@
 package com.project.management.controller;
 
-import com.project.management.dto.request.UpdateUserRequest;  // ← ADD THIS
+import com.project.management.dto.request.UpdateUserRequest; // ← ADD THIS
 import com.project.management.dto.response.UserResponse;
 import com.project.management.enums.Role;
 import com.project.management.model.User;
@@ -30,12 +30,19 @@ public class AdminController {
                 .collect(Collectors.toList()));
     }
 
+    @GetMapping("/users/search")
+    public ResponseEntity<List<UserResponse>> searchUsers(@RequestParam String query) {
+        List<User> users = userService.searchUsers(query);
+        return ResponseEntity.ok(users.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList()));
+    }
+
     @PatchMapping("/users/{id}/role")
     public ResponseEntity<UserResponse> changeUserRole(
             @PathVariable Long id,
             @RequestParam Role role,
-            @AuthenticationPrincipal User currentUser
-    ) {
+            @AuthenticationPrincipal User currentUser) {
         User updated = userService.changeUserRole(id, role, currentUser);
         return ResponseEntity.ok(mapToResponse(updated));
     }
@@ -43,8 +50,7 @@ public class AdminController {
     @PatchMapping("/users/{id}/activate")
     public ResponseEntity<Void> activateUser(
             @PathVariable Long id,
-            @AuthenticationPrincipal User currentUser
-    ) {
+            @AuthenticationPrincipal User currentUser) {
         userService.activateUser(id, currentUser);
         return ResponseEntity.ok().build();
     }
@@ -52,8 +58,7 @@ public class AdminController {
     @PatchMapping("/users/{id}/deactivate")
     public ResponseEntity<Void> deactivateUser(
             @PathVariable Long id,
-            @AuthenticationPrincipal User currentUser
-    ) {
+            @AuthenticationPrincipal User currentUser) {
         userService.deactivateUser(id, currentUser);
         return ResponseEntity.ok().build();
     }
@@ -63,8 +68,7 @@ public class AdminController {
     public ResponseEntity<UserResponse> updateUser(
             @PathVariable Long id,
             @RequestBody UpdateUserRequest request,
-            @AuthenticationPrincipal User currentUser
-    ) {
+            @AuthenticationPrincipal User currentUser) {
         User updated = userService.updateUser(id, request, currentUser);
         return ResponseEntity.ok(mapToResponse(updated));
     }

@@ -18,7 +18,39 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
-const ReportGenerator = () => {
+const RANGE_LABELS = {
+  week: 'This Week',
+  month: 'This Month',
+  quarter: 'This Quarter',
+  year: 'This Year'
+};
+
+// Rolling window ending "now" - e.g. 'month' means "created in the last 30
+// days", not calendar-month boundaries. Returns null for an unrecognized/
+// missing range, which callers treat as "no filtering".
+const getRangeStartDate = (range) => {
+  const start = new Date();
+  switch (range) {
+    case 'week':
+      start.setDate(start.getDate() - 7);
+      return start;
+    case 'month':
+      start.setMonth(start.getMonth() - 1);
+      return start;
+    case 'quarter':
+      start.setMonth(start.getMonth() - 3);
+      return start;
+    case 'year':
+      start.setFullYear(start.getFullYear() - 1);
+      return start;
+    default:
+      return null;
+  }
+};
+
+const getRangeLabel = (range) => RANGE_LABELS[range] || 'All Time';
+
+const ReportGenerator = ({ dateRange = 'month' }) => {
   const { user } = useSelector((state) => state.auth);
   const { projects } = useSelector((state) => state.projects);
   const { tasks } = useSelector((state) => state.tasks);
@@ -31,6 +63,17 @@ const ReportGenerator = () => {
   const [generatedFileUrl, setGeneratedFileUrl] = useState(null);
   const [generatedFileType, setGeneratedFileType] = useState(null);
   const [fileBlob, setFileBlob] = useState(null);
+
+  // Filtered count per report type, so the "records available" badge on
+  // each type card matches what Generate will actually produce - previously
+  // this read the raw unfiltered arrays directly, out of sync with the
+  // date-range filter applied in getReportData().
+  const getFilteredCount = (type) => {
+    const rangeStart = getRangeStartDate(dateRange);
+    const raw = type === 'tasks' ? (tasks || []) : type === 'projects' ? (projects || []) : (users || []);
+    if (!rangeStart) return raw.length;
+    return raw.filter((item) => item.createdAt && new Date(item.createdAt) >= rangeStart).length;
+  };
 
   const reportTypes = [
     { value: 'tasks', label: 'Tasks Report', icon: FaTasks },
@@ -45,18 +88,34 @@ const ReportGenerator = () => {
     { value: 'pdf', label: 'PDF', icon: FaFilePdf }
   ];
 
-  // ✅ Get data based on report type
+  // ✅ Get data based on report type, filtered by the selected date range.
+  // "Created within the range" is the filtering semantic used here - e.g.
+  // "This Month" means tasks/projects created in the last 30 days, not
+  // ones due this month. If you want tasks filtered by due date instead,
+  // that's a one-line change below (swap createdAt for dueDate on tasks).
   const getReportData = () => {
+    let data;
     switch (reportType) {
       case 'tasks':
-        return tasks || [];
+        data = tasks || [];
+        break;
       case 'projects':
-        return projects || [];
+        data = projects || [];
+        break;
       case 'employees':
-        return users || [];
+        data = users || [];
+        break;
       default:
-        return [];
+        data = [];
     }
+
+    const rangeStart = getRangeStartDate(dateRange);
+    if (!rangeStart) return data;
+
+    return data.filter((item) => {
+      if (!item.createdAt) return false;
+      return new Date(item.createdAt) >= rangeStart;
+    });
   };
 
   // ✅ Format data for display
@@ -175,7 +234,7 @@ const ReportGenerator = () => {
       doc.setTextColor(200, 200, 200);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Report Type: ${type.toUpperCase()}`, 14, 22);
+      doc.text(`Report Type: ${type.toUpperCase()} • Range: ${getRangeLabel(dateRange)}`, 14, 22);
       doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - 60, 16);
       doc.text(`Records: ${data.length}`, pageWidth - 60, 22);
       
@@ -275,7 +334,7 @@ const ReportGenerator = () => {
     const link = document.createElement('a');
     link.href = generatedFileUrl;
     const ext = format === 'excel' ? 'xlsx' : format;
-    link.setAttribute('download', `${reportType}_report_${new Date().toISOString().split('T')[0]}.${ext}`);
+    link.setAttribute('download', `${reportType}_report_${dateRange}_${new Date().toISOString().split('T')[0]}.${ext}`);
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -301,7 +360,7 @@ const ReportGenerator = () => {
           <body style="margin:0;padding:40px;font-family:sans-serif;background:#f5f5f5;">
             <div style="max-width:800px;margin:0 auto;background:white;padding:30px;border-radius:8px;border:1px solid #e5e7eb;">
               <h1 style="margin:0 0 8px 0;font-size:24px;color:#111827;">${reportType.toUpperCase()} Report</h1>
-              <p style="margin:0 0 20px 0;color:#6b7280;font-size:14px;">Generated: ${new Date().toLocaleString()} • ${formattedData.length} records</p>
+              <p style="margin:0 0 20px 0;color:#6b7280;font-size:14px;">Generated: ${new Date().toLocaleString()} • ${getRangeLabel(dateRange)} • ${formattedData.length} records</p>
               <div style="overflow-x:auto;border:1px solid #e5e7eb;border-radius:6px;">
                 <table style="width:100%;border-collapse:collapse;font-size:12px;">
                   <thead style="background:#f9fafb;">
@@ -408,9 +467,7 @@ const ReportGenerator = () => {
         {reportTypes.map((type) => {
           const Icon = type.icon;
           const isSelected = reportType === type.value;
-          const count = type.value === 'tasks' ? tasks?.length || 0 : 
-                       type.value === 'projects' ? projects?.length || 0 : 
-                       users?.length || 0;
+          const count = getFilteredCount(type.value);
           return (
             <button
               key={type.value}
@@ -510,7 +567,7 @@ const ReportGenerator = () => {
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-900">{reportType.toUpperCase()} Report</p>
-                <p className="text-[10px] text-gray-400 font-mono">{format.toUpperCase()} • {new Date().toLocaleTimeString()}</p>
+                <p className="text-[10px] text-gray-400 font-mono">{format.toUpperCase()} • {getRangeLabel(dateRange)} • {new Date().toLocaleTimeString()}</p>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
@@ -586,7 +643,7 @@ const ReportGenerator = () => {
                 Report Preview
               </h2>
               <p className="text-[10px] text-gray-400 font-mono">
-                {reportData.count} records • Generated: {new Date(reportData.generatedAt).toLocaleString()}
+                {reportData.count} records • {getRangeLabel(dateRange)} • Generated: {new Date(reportData.generatedAt).toLocaleString()}
               </p>
             </div>
             <div className="flex gap-1.5">

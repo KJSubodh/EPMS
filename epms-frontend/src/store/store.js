@@ -9,6 +9,7 @@ import notificationReducer from './slices/notificationSlice';
 import commentReducer from './slices/commentSlice';
 import searchReducer from './slices/searchSlice';
 import emailReducer from './slices/emailSlice';  
+import analyticsReducer from './slices/analyticsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -21,5 +22,6 @@ export const store = configureStore({
     comments: commentReducer,
     search: searchReducer,
     email: emailReducer,  
+    analytics: analyticsReducer,
   },
 });

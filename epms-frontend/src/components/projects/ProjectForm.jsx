@@ -65,9 +65,9 @@ const ProjectForm = ({ project, onClose, onSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded border border-gray-200 shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-4 border-b border-gray-200 sticky top-0 bg-white">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+      <div className="bg-white/95 backdrop-blur-sm rounded border border-white/40 shadow-2xl shadow-black/10 max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-4 border-b border-gray-200 sticky top-0 bg-white/95 backdrop-blur-sm">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-[#7C3AED] rounded flex items-center justify-center">
               <FaProjectDiagram className="text-white text-sm" />

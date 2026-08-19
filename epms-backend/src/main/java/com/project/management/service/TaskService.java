@@ -10,6 +10,7 @@ import com.project.management.model.User;
 import com.project.management.enums.Role;
 import com.project.management.enums.TaskStatus;
 import com.project.management.enums.TaskPriority;
+import com.project.management.enums.NotificationType;
 import com.project.management.dto.request.TaskRequest;
 import com.project.management.dto.request.BoardUpdateRequest;
 import com.project.management.dto.response.TaskResponse;
@@ -43,7 +44,7 @@ public class TaskService {
     private final UserDao userDao;
     private final TaskDocumentRepository documentRepository;
     private final NotificationService notificationService;
-    private final AuditService auditService;
+    private final AuditLogService auditLogService;
     private final EmailService emailService;  // ✅ ADD THIS
 
     // ==================== TASK CRUD METHODS ====================
@@ -97,13 +98,13 @@ public class TaskService {
         // 🔔 Send in-app notification to assigned user
         if (assignedTo != null) {
             String message = String.format("You have been assigned to task: %s", savedTask.getTitle());
-            notificationService.createTaskNotification(assignedTo, savedTask, message);
-            
+            notificationService.createTaskNotification(assignedTo, savedTask, message, NotificationType.TASK_ASSIGNED);
+
             // ✅ Send email notification to assigned user
             emailService.sendTaskAssignmentEmail(assignedTo, savedTask);
         }
 
-        auditService.logAction("Task", savedTask.getId(), "CREATED", currentUser);
+        auditLogService.log("Task", savedTask.getId(), "CREATED", currentUser);
 
         return mapToResponse(savedTask);
     }
@@ -194,17 +195,19 @@ public class TaskService {
         // 🔔 Send notifications for assignment changes
         if (assignedTo != null && (previousAssignee == null || !previousAssignee.getId().equals(assignedTo.getId()))) {
             String message = String.format("Task reassigned to you: %s", updated.getTitle());
-            notificationService.createTaskNotification(assignedTo, updated, message);
+            notificationService.createTaskNotification(assignedTo, updated, message, NotificationType.TASK_ASSIGNED);
             // ✅ Send email for reassignment
             emailService.sendTaskAssignmentEmail(assignedTo, updated);
         }
 
         if (previousAssignee != null && (assignedTo == null || !previousAssignee.getId().equals(assignedTo.getId()))) {
             String message = String.format("You have been unassigned from task: %s", updated.getTitle());
-            notificationService.createTaskNotification(previousAssignee, updated, message);
+            // This is an unassignment, not a new assignment - was previously
+            // mis-typed as TASK_ASSIGNED, which showed the wrong icon/color.
+            notificationService.createTaskNotification(previousAssignee, updated, message, NotificationType.TASK_UPDATED);
         }
 
-        auditService.logAction("Task", id, "UPDATED", currentUser);
+        auditLogService.log("Task", id, "UPDATED", currentUser);
 
         return mapToResponse(updated);
     }
@@ -229,30 +232,33 @@ public class TaskService {
         task.setStatus(status);
         Task updated = taskDao.save(task);
 
-        // 🔔 Send in-app notification
-        if (task.getAssignedTo() != null && !task.getAssignedTo().getId().equals(currentUser.getId())) {
-            String message = String.format("Task '%s' status changed from %s to %s",
-                    updated.getTitle(), previousStatus, status);
-            notificationService.createTaskNotification(task.getAssignedTo(), updated, message);
-        }
+        boolean isCompletion = status == TaskStatus.DONE;
+        NotificationType statusNotificationType = isCompletion ? NotificationType.TASK_COMPLETED : NotificationType.TASK_UPDATED;
 
-        // ✅ Send email notification for task completion
-        if (status == TaskStatus.DONE && task.getAssignedTo() != null) {
-            String message = String.format("Task completed: %s", updated.getTitle());
-            notificationService.createTaskNotification(task.getAssignedTo(), updated, message);
-            // ✅ Send email completion notification
-            emailService.sendTaskCompletionEmail(updated, task.getAssignedTo());
+        // 🔔 Notify the assignee - a single notification per status change.
+        // Previously this fired twice on completion (once here, once more
+        // below), and fired even when the assignee completed their own task.
+        if (task.getAssignedTo() != null && !task.getAssignedTo().getId().equals(currentUser.getId())) {
+            String assigneeMessage = isCompletion
+                    ? String.format("Task completed: %s", updated.getTitle())
+                    : String.format("Task '%s' status changed from %s to %s", updated.getTitle(), previousStatus, status);
+            notificationService.createTaskNotification(task.getAssignedTo(), updated, assigneeMessage, statusNotificationType);
+
+            if (isCompletion) {
+                // ✅ Send email completion notification
+                emailService.sendTaskCompletionEmail(updated, task.getAssignedTo());
+            }
         }
 
         if (task.getCreatedBy() != null && !task.getCreatedBy().getId().equals(currentUser.getId())) {
             if (task.getAssignedTo() == null || !task.getAssignedTo().getId().equals(task.getCreatedBy().getId())) {
                 String message = String.format("Task '%s' status updated to %s by %s",
                         updated.getTitle(), status, currentUser.getFullName());
-                notificationService.createTaskNotification(task.getCreatedBy(), updated, message);
+                notificationService.createTaskNotification(task.getCreatedBy(), updated, message, statusNotificationType);
             }
         }
 
-        auditService.logAction("Task", id, "STATUS_UPDATED", currentUser);
+        auditLogService.log("Task", id, "STATUS_UPDATED", currentUser);
 
         return mapToResponse(updated);
     }
@@ -274,7 +280,7 @@ public class TaskService {
             }
         }
 
-        auditService.logAction("Task", id, "DELETED", currentUser);
+        auditLogService.log("Task", id, "DELETED", currentUser);
         taskDao.delete(task);
     }
 
@@ -464,7 +470,7 @@ public class TaskService {
 
             TaskDocument saved = documentRepository.save(document);
 
-            auditService.logAction("TaskDocument", saved.getId(), "UPLOADED", currentUser);
+            auditLogService.log("TaskDocument", saved.getId(), "UPLOADED", currentUser);
 
             return saved;
         } catch (IOException e) {
@@ -523,7 +529,7 @@ public class TaskService {
 
         documentRepository.delete(document);
 
-        auditService.logAction("TaskDocument", documentId, "DELETED", currentUser);
+        auditLogService.log("TaskDocument", documentId, "DELETED", currentUser);
     }
 
     // ==================== HELPER METHODS ====================

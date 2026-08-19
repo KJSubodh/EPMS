@@ -13,7 +13,7 @@ import {
   FaCog,
   FaColumns,
   FaUser,
-  FaChevronRight
+  FaChartLine // ✅ Added this import
 } from 'react-icons/fa';
 import { useDispatch } from 'react-redux';
 import { logoutUser } from '../../store/slices/authSlice';
@@ -66,22 +66,39 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, user }) => {
     await handleLogout();
   };
 
+  // ✅ Menu items with role-based visibility
   const menuItems = [
-    { path: '/dashboard', icon: FaHome, label: 'Dashboard' },
-    { path: '/projects', icon: FaProjectDiagram, label: 'Projects' },
-    { path: '/tasks', icon: FaTasks, label: 'Tasks' },
+    { path: '/dashboard', icon: FaHome, label: 'Dashboard', roles: ['ADMIN', 'PROJECT_MANAGER', 'EMPLOYEE'] },
+    { path: '/projects', icon: FaProjectDiagram, label: 'Projects', roles: ['ADMIN', 'PROJECT_MANAGER', 'EMPLOYEE'] },
+    { path: '/tasks', icon: FaTasks, label: 'Tasks', roles: ['ADMIN', 'PROJECT_MANAGER', 'EMPLOYEE'] },
+    
+    // Board - only for Admin & PM
     ...(user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER' ? [
-      { path: '/board', icon: FaColumns, label: 'Board' }
+      { path: '/board', icon: FaColumns, label: 'Board', roles: ['ADMIN', 'PROJECT_MANAGER'] }
     ] : []),
+    
+    // My Board - only for Employee
     ...(user?.role === 'EMPLOYEE' ? [
-      { path: '/my-board', icon: FaUser, label: 'My Board' }
+      { path: '/my-board', icon: FaUser, label: 'My Board', roles: ['EMPLOYEE'] }
     ] : []),
+    
+    // ✅ Analytics - only for Admin & PM
+    ...(user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER' ? [
+      { path: '/analytics', icon: FaChartLine, label: 'Analytics', roles: ['ADMIN', 'PROJECT_MANAGER'] }
+    ] : []),
+    
+    // Employees - only for Admin
     ...(user?.role === 'ADMIN' ? [
-      { path: '/employees', icon: FaUsers, label: 'Employees' },
-      { path: '/admin/users', icon: FaUserCog, label: 'User Management' }
+      { path: '/employees', icon: FaUsers, label: 'Employees', roles: ['ADMIN'] }
     ] : []),
-    { path: '/reports', icon: FaChartBar, label: 'Reports' },
-    { path: '/settings', icon: FaCog, label: 'Settings' },
+    
+    // User Management - only for Admin
+    ...(user?.role === 'ADMIN' ? [
+      { path: '/admin/users', icon: FaUserCog, label: 'User Management', roles: ['ADMIN'] }
+    ] : []),
+    
+    { path: '/reports', icon: FaChartBar, label: 'Reports', roles: ['ADMIN', 'PROJECT_MANAGER', 'EMPLOYEE'] },
+    { path: '/settings', icon: FaCog, label: 'Settings', roles: ['ADMIN', 'PROJECT_MANAGER', 'EMPLOYEE'] },
   ];
 
   const isPathActive = (path) => {
@@ -119,7 +136,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, user }) => {
           </button>
         </div>
 
-        {/* User Profile - Dark Theme */}
+        {/* User Profile */}
         <div className="px-3 py-4 border-b border-white/5">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-[#7C3AED] rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
@@ -136,7 +153,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, user }) => {
           </div>
         </div>
 
-        {/* Navigation - Dark Theme */}
+        {/* Navigation */}
         <nav className="px-2 py-3 overflow-y-auto h-[calc(100vh-180px)]">
           <div className="space-y-0.5">
             {menuItems.map((item) => {
@@ -167,13 +184,14 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, user }) => {
                       Admin
                     </span>
                   )}
+                  {item.path === '/analytics'}
                 </NavLink>
               );
             })}
           </div>
         </nav>
 
-        {/* Footer - Dark Theme with Red Logout */}
+        {/* Footer */}
         <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/5">
           <button
             onClick={confirmLogout}

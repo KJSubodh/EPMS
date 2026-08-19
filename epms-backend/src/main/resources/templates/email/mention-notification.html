@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>You were mentioned</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; background: white; }
+        .header { background: linear-gradient(135deg, #7C3AED, #6D28D9); padding: 30px; border-radius: 8px 8px 0 0; color: white; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .content { padding: 30px; border: 1px solid #E5E7EB; border-top: none; border-radius: 0 0 8px 8px; background: white; }
+        .mention-box { background: #F3F4F6; padding: 15px; border-radius: 6px; margin: 15px 0; border-left: 4px solid #7C3AED; }
+        .btn { display: inline-block; padding: 12px 24px; background: #7C3AED; color: white; text-decoration: none; border-radius: 6px; margin-top: 15px; }
+        .footer { text-align: center; margin-top: 20px; color: #9CA3AF; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📌 You were mentioned!</h1>
+        </div>
+        
+        <div class="content">
+            <p style="font-size: 16px; color: #1F2937;">
+                <strong th:text="${mentionerName}">User</strong> mentioned you in a comment on task:
+            </p>
+            
+            <h3 style="color: #7C3AED; margin: 10px 0;" th:text="${taskTitle}">Task Title</h3>
+            
+            <div class="mention-box">
+                <p style="margin: 0; color: #374151; font-style: italic;" th:text="${commentContent}">
+                    "Comment content here"
+                </p>
+                <p style="margin: 5px 0 0 0; font-size: 12px; color: #9CA3AF;">
+                    <span th:text="${commentDate}">Date</span>
+                </p>
+            </div>
+            
+            <div style="text-align: center;">
+                <a href="#" class="btn" th:href="${taskLink}">View Task</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>You received this email because you were mentioned in a comment.</p>
+            <p>EPMS - Enterprise Project Management System</p>
+            <p>&copy; <span th:text="${year}">2026</span> EPMS. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

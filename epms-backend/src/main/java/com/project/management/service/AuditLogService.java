@@ -20,6 +20,12 @@ public class AuditLogService {
         this.auditLogDao = auditLogDao;
     }
 
+    /**
+     * Full audit entry with a serialized "changes" payload (e.g. a diff of
+     * before/after field values). Prefer this overload whenever you have
+     * meaningful change data to record — it's what makes the audit trail
+     * actually useful for "what changed", not just "what happened".
+     */
     @Transactional
     public void log(String entityType, Long entityId, String action, Object changes, User performedBy) {
         String changesJson = null;
@@ -39,5 +45,15 @@ public class AuditLogService {
                 .performedBy(performedBy)
                 .build();
         auditLogDao.save(entry);
+    }
+
+    /**
+     * Lightweight audit entry with no change payload. Same parameter order
+     * as the old AuditService.logAction(...), so existing call sites can
+     * switch over by renaming the bean/method — see migration note below.
+     */
+    @Transactional
+    public void log(String entityType, Long entityId, String action, User performedBy) {
+        log(entityType, entityId, action, null, performedBy);
     }
 }

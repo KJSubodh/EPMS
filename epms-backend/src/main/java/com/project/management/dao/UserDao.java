@@ -35,7 +35,6 @@ public class UserDao {
         return userRepository.findByRole(role);
     }
 
-    // ✅ Now works
     public List<User> findActiveEmployees() {
         return userRepository.findActiveEmployees();
     }
@@ -44,12 +43,10 @@ public class UserDao {
         return userRepository.existsByEmail(email);
     }
 
-    // ✅ Now works
     public Long countEmployees() {
         return userRepository.countEmployees();
     }
 
-    // ✅ Now works
     public long countByRole(Role role) {
         return userRepository.countByRole(role);
     }
@@ -60,5 +57,13 @@ public class UserDao {
 
     public void delete(User user) {
         userRepository.delete(user);
+    }
+
+    // ✅ Search method delegating to repository
+    public List<User> searchByQuery(String query) {
+        if (query == null || query.isEmpty()) {
+            return userRepository.findAll();
+        }
+        return userRepository.searchByQuery(query);
     }
 }

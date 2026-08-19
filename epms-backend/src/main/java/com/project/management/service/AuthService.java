@@ -7,6 +7,9 @@ import com.project.management.dto.request.RegisterRequest;
 import com.project.management.dto.response.AuthResponse;
 import com.project.management.model.User;
 import com.project.management.enums.Role;
+import com.project.management.exception.BusinessException;
+import com.project.management.exception.ResourceNotFoundException;
+import com.project.management.exception.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,12 +25,16 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final AuditLogService auditLogService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         // Check if email already exists
         if (userDao.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already registered");
+            // Was a generic RuntimeException (likely surfaces as a 500);
+            // BusinessException matches the 400-level convention used
+            // elsewhere for validation failures like this.
+            throw new BusinessException("Email already registered");
         }
 
         // Create user
@@ -42,6 +49,8 @@ public class AuthService {
                 .build();
 
         user = userDao.save(user);
+
+        auditLogService.log("User", user.getId(), "REGISTERED", user);
 
         // Generate JWT token
         String jwtToken = jwtService.generateToken(user);
@@ -65,15 +74,19 @@ public class AuthService {
 
         // Get user
         User user = userDao.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Check if user is active
         if (!user.getIsActive()) {
-            throw new RuntimeException("Account is deactivated");
+            // Was a generic RuntimeException; this is specifically an
+            // authorization failure (401/403), not a server error.
+            throw new UnauthorizedException("Account is deactivated");
         }
 
         // Generate JWT token
         String jwtToken = jwtService.generateToken(user);
+
+        auditLogService.log("User", user.getId(), "LOGIN", user);
 
         return AuthResponse.builder()
                 .token(jwtToken)

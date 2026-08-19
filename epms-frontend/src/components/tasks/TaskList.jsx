@@ -1,6 +1,7 @@
 // src/components/tasks/TaskList.jsx
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { fetchTasks, deleteTask, updateTaskStatus } from '../../store/slices/taskSlice';
 import TaskCard from './TaskCard';
 import TaskForm from './TaskForm';
@@ -10,6 +11,8 @@ import { FaTasks, FaPlus } from 'react-icons/fa';
 
 const TaskList = () => {
   const dispatch = useDispatch();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { tasks, isLoading } = useSelector((state) => state.tasks);
   const { user } = useSelector((state) => state.auth);
   const [showForm, setShowForm] = useState(false);
@@ -23,6 +26,26 @@ const TaskList = () => {
     dispatch(fetchTasks());
   }, [dispatch]);
 
+  const isAdminOrPM = user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER';
+  const canCreateTask = isAdminOrPM;
+
+  // Landing directly on /tasks/new (e.g. from the Dashboard) opens the
+  // create form over this list instead of rendering it on a blank page.
+  useEffect(() => {
+    if (location.pathname === '/tasks/new' && canCreateTask) {
+      setEditingTask(null);
+      setShowForm(true);
+    }
+  }, [location.pathname, canCreateTask]);
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingTask(null);
+    if (location.pathname === '/tasks/new') {
+      navigate('/tasks');
+    }
+  };
+
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this task?')) {
       await dispatch(deleteTask(id));
@@ -32,9 +55,6 @@ const TaskList = () => {
   const handleStatusChange = async (id, status) => {
     await dispatch(updateTaskStatus({ id, status }));
   };
-
-  const isAdminOrPM = user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER';
-  const canCreateTask = isAdminOrPM;
 
   // Calculate stats
   const totalTasks = tasks?.length || 0;
@@ -150,10 +170,7 @@ const TaskList = () => {
       {showForm && canCreateTask && (
         <TaskForm
           task={editingTask}
-          onClose={() => {
-            setShowForm(false);
-            setEditingTask(null);
-          }}
+          onClose={closeForm}
           onSuccess={() => dispatch(fetchTasks())}
         />
       )}

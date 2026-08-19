@@ -8,6 +8,7 @@ import com.project.management.model.User;
 import com.project.management.model.ProjectMember;
 import com.project.management.enums.ProjectStatus;
 import com.project.management.enums.Role;
+import com.project.management.enums.NotificationType;
 import com.project.management.dto.request.ProjectRequest;
 import com.project.management.dto.response.ProjectResponse;
 import com.project.management.dto.response.DashboardStatsResponse;
@@ -30,16 +31,21 @@ public class ProjectService {
     private final UserDao userDao;
     private final ProjectMemberDao projectMemberDao;
     private final NotificationService notificationService;
-    private final AuditService auditService;
+    private final AuditLogService auditLogService;
 
     /**
-     * CREATE PROJECT - Only Admin can create projects
+     * CREATE PROJECT - Admin and Project Manager.
+     *
+     * PMs get project creation because it's a natural extension of the
+     * project-management responsibilities they already have (updating,
+     * adding/removing members on their own projects) - but deletion and
+     * other admin-tier actions below remain Admin-only.
      */
     @Transactional
     public ProjectResponse createProject(ProjectRequest request, User currentUser) {
-        // ✅ AUTHORIZATION: Only Admin can create projects
-        if (currentUser.getRole() != Role.ADMIN) {
-            throw new UnauthorizedException("Only Admins can create projects");
+        // ✅ AUTHORIZATION: Admin and Project Manager can create projects
+        if (currentUser.getRole() != Role.ADMIN && currentUser.getRole() != Role.PROJECT_MANAGER) {
+            throw new UnauthorizedException("Only Admins and Project Managers can create projects");
         }
 
         // ✅ BUSINESS RULE: Start date cannot be in the past, end date cannot precede start date
@@ -72,10 +78,11 @@ public class ProjectService {
         notificationService.createProjectNotification(
             currentUser,
             savedProject,
-            "Project created: " + savedProject.getName()
+            "Project created: " + savedProject.getName(),
+            NotificationType.PROJECT_CREATED
         );
 
-        auditService.logAction("Project", savedProject.getId(), "CREATED", currentUser);
+        auditLogService.log("Project", savedProject.getId(), "CREATED", currentUser);
 
         return mapToResponse(savedProject);
     }
@@ -170,13 +177,25 @@ public class ProjectService {
 
         Project updated = projectDao.save(project);
 
-        notificationService.createProjectNotification(
-            currentUser,
-            updated,
-            "Project updated: " + updated.getName()
-        );
+        // 🔔 Notify the actual project members about the change - previously
+        // this notified the person who MADE the edit (i.e. themselves),
+        // which is not useful. Now it notifies everyone else on the project,
+        // and uses PROJECT_COMPLETED instead of PROJECT_UPDATED when the
+        // edit is what completed the project.
+        boolean justCompleted = updated.getStatus() == ProjectStatus.COMPLETED;
+        NotificationType updateType = justCompleted ? NotificationType.PROJECT_COMPLETED : NotificationType.PROJECT_UPDATED;
+        String updateMessage = justCompleted
+                ? String.format("Project completed: %s", updated.getName())
+                : String.format("Project updated: %s", updated.getName());
 
-        auditService.logAction("Project", id, "UPDATED", currentUser);
+        if (updated.getMembers() != null) {
+            updated.getMembers().stream()
+                    .filter(m -> !m.getUser().getId().equals(currentUser.getId()))
+                    .forEach(m -> notificationService.createProjectNotification(
+                            m.getUser(), updated, updateMessage, updateType));
+        }
+
+        auditLogService.log("Project", id, "UPDATED", currentUser);
 
         return mapToResponse(updated);
     }
@@ -194,7 +213,7 @@ public class ProjectService {
             throw new UnauthorizedException("Only Admins can delete projects");
         }
 
-        auditService.logAction("Project", id, "DELETED", currentUser);
+        auditLogService.log("Project", id, "DELETED", currentUser);
         projectDao.delete(project);
     }
 
@@ -235,13 +254,15 @@ public class ProjectService {
                 .build();
         projectMemberDao.save(member);
 
-        notificationService.createProjectNotification(
+        // Was previously typed as PROJECT_CREATED regardless of the actual
+        // event, which showed the wrong icon on the frontend.
+        notificationService.createMemberAddedNotification(
             user,
             project,
             "You have been added to project: " + project.getName()
         );
 
-        auditService.logAction("ProjectMember", projectId, "MEMBER_ADDED", currentUser);
+        auditLogService.log("ProjectMember", projectId, "MEMBER_ADDED", currentUser);
 
         return mapToResponse(project);
     }
@@ -277,8 +298,18 @@ public class ProjectService {
             throw new BusinessException("Cannot remove the project lead");
         }
 
+        // 🔔 Previously the removed member received no notification at all.
+        User removedUser = member.getUser();
+
         projectMemberDao.deleteByProjectIdAndUserId(projectId, userId);
-        auditService.logAction("ProjectMember", projectId, "MEMBER_REMOVED", currentUser);
+
+        notificationService.createMemberRemovedNotification(
+            removedUser,
+            project,
+            "You have been removed from project: " + project.getName()
+        );
+
+        auditLogService.log("ProjectMember", projectId, "MEMBER_REMOVED", currentUser);
     }
 
     private ProjectResponse mapToResponse(Project project) {

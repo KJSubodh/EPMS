@@ -4,7 +4,29 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchUsers, changeUserRole, activateUser, deactivateUser } from '../../store/slices/adminSlice';
 import EmployeeForm from './EmployeeForm';
 import PageHero from '../common/PageHero';
-import { FaUserCog, FaUsers, FaUserCheck, FaUserTimes, FaShieldAlt } from 'react-icons/fa';
+import { FaUserCog, FaUserCheck, FaUserTimes, FaEdit, FaUsers } from 'react-icons/fa';
+
+const ROLE_COLORS = {
+  ADMIN: '#7C3AED',
+  PROJECT_MANAGER: '#3B82F6',
+  EMPLOYEE: '#16A34A'
+};
+
+const ROLE_LABELS = {
+  ADMIN: 'Admin',
+  PROJECT_MANAGER: 'Project Manager',
+  EMPLOYEE: 'Employee'
+};
+
+const getAvatarColor = (name) => {
+  const colors = ['#7C3AED', '#3B82F6', '#16A34A', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#F97316', '#EC4899', '#14B8A6'];
+  if (!name) return colors[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
 
 const UserManagement = () => {
   const dispatch = useDispatch();
@@ -53,15 +75,6 @@ const UserManagement = () => {
     return matchesSearch && matchesRole && matchesStatus;
   });
 
-  const getRoleBadge = (role) => {
-    const colors = {
-      'ADMIN': 'bg-violet-500',
-      'PROJECT_MANAGER': 'bg-blue-500',
-      'EMPLOYEE': 'bg-gray-500'
-    };
-    return colors[role] || 'bg-gray-500';
-  };
-
   if (isLoading && users.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -99,105 +112,111 @@ const UserManagement = () => {
 
       {/* User Table */}
       <div className="bg-white rounded border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">User</th>
-                <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Email</th>
-                <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Department</th>
-                <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Designation</th>
-                <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Role</th>
-                <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredUsers.length === 0 ? (
+        {filteredUsers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-300 mb-3">
+              <FaUsers className="text-xl" />
+            </div>
+            <p className="text-sm text-gray-500">No users found</p>
+            <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filters</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <td colSpan="7" className="px-3 py-8 text-center text-gray-500">
-                    <p className="text-sm font-medium">No users found</p>
-                    <p className="text-xs">Try adjusting your search or filters</p>
-                  </td>
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">User</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Email</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Department</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Designation</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Role</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                 </tr>
-              ) : (
-                filteredUsers.map((user) => (
-                  <tr key={user.id} className={`hover:bg-gray-50 transition-colors ${user.id === currentUser?.id ? 'bg-gray-50' : ''}`}>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium ${getRoleBadge(user.role)}`}>
-                          {user.fullName?.charAt(0) || 'U'}
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredUsers.map((user) => {
+                  const isSelf = user.id === currentUser?.id;
+                  const avatarColor = getAvatarColor(user.fullName);
+                  return (
+                    <tr key={user.id} className={`hover:bg-gray-50/80 transition-colors ${isSelf ? 'bg-gray-50/50' : ''}`}>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
+                            style={{ backgroundColor: avatarColor }}
+                          >
+                            {user.fullName?.charAt(0) || 'U'}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-gray-900 truncate">
+                              {user.fullName}
+                              {isSelf && (
+                                <span className="ml-1.5 text-[10px] text-gray-400 font-normal">(You)</span>
+                              )}
+                            </p>
+                            <p className="text-[10px] text-gray-500 md:hidden truncate">{user.email}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs font-medium text-gray-900">
-                            {user.fullName}
-                            {user.id === currentUser?.id && (
-                              <span className="ml-1.5 text-[10px] text-gray-400 font-normal">(You)</span>
-                            )}
-                          </p>
-                          <p className="text-[10px] text-gray-500 md:hidden">{user.email}</p>
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-gray-600 hidden md:table-cell">{user.email}</td>
+                      <td className="px-3 py-2.5 text-xs text-gray-600 hidden lg:table-cell">{user.department || '—'}</td>
+                      <td className="px-3 py-2.5 text-xs text-gray-600 hidden lg:table-cell">{user.designation || '—'}</td>
+                      <td className="px-3 py-2.5">
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                          disabled={isSelf}
+                          className="border rounded px-1.5 py-0.5 text-[9px] font-mono font-medium focus:outline-none focus:ring-1 focus:ring-[#7C3AED] disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-70 bg-white"
+                          style={{
+                            borderColor: `${ROLE_COLORS[user.role] || '#6B7280'}55`,
+                            color: ROLE_COLORS[user.role] || '#6B7280'
+                          }}
+                        >
+                          <option value="EMPLOYEE">Employee</option>
+                          <option value="PROJECT_MANAGER">Project Manager</option>
+                          <option value="ADMIN">Admin</option>
+                        </select>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-medium text-white"
+                          style={{ backgroundColor: user.isActive ? '#16A34A' : '#EF4444' }}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full bg-white/70 ${user.isActive ? 'animate-pulse' : ''}`}></span>
+                          {user.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => setEditingUser(user)}
+                            title="Edit user"
+                            className="p-1.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                          >
+                            <FaEdit className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => handleToggleActive(user.id, user.isActive)}
+                            disabled={isSelf}
+                            title={user.isActive ? 'Deactivate user' : 'Activate user'}
+                            className={`p-1.5 rounded transition-colors ${
+                              user.isActive
+                                ? 'text-red-400 hover:text-red-600 hover:bg-red-50'
+                                : 'text-green-500 hover:text-green-700 hover:bg-green-50'
+                            } ${isSelf ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+                          >
+                            {user.isActive ? <FaUserTimes className="w-3 h-3" /> : <FaUserCheck className="w-3 h-3" />}
+                          </button>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 text-xs text-gray-600 hidden md:table-cell">{user.email}</td>
-                    <td className="px-3 py-2.5 text-xs text-gray-600 hidden lg:table-cell">{user.department || '—'}</td>
-                    <td className="px-3 py-2.5 text-xs text-gray-600 hidden lg:table-cell">{user.designation || '—'}</td>
-                    <td className="px-3 py-2.5">
-                      <select
-                        value={user.role}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                        disabled={user.id === currentUser?.id}
-                        className={`border rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-[#7C3AED] ${
-                          user.id === currentUser?.id ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
-                        } ${
-                          user.role === 'ADMIN' ? 'border-violet-300 text-violet-700' :
-                          user.role === 'PROJECT_MANAGER' ? 'border-blue-300 text-blue-700' :
-                          'border-gray-300 text-gray-700'
-                        }`}
-                      >
-                        <option value="EMPLOYEE">Employee</option>
-                        <option value="PROJECT_MANAGER">Project Manager</option>
-                        <option value="ADMIN">Admin</option>
-                      </select>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-medium text-white ${
-                        user.isActive ? 'bg-green-500' : 'bg-red-500'
-                      }`}>
-                        {user.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setEditingUser(user)}
-                          className="px-2 py-0.5 text-[10px] font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleToggleActive(user.id, user.isActive)}
-                          disabled={user.id === currentUser?.id}
-                          className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors ${
-                            user.isActive 
-                              ? 'text-red-500 hover:text-red-700 hover:bg-red-50' 
-                              : 'text-green-500 hover:text-green-700 hover:bg-green-50'
-                          } ${
-                            user.id === currentUser?.id 
-                              ? 'opacity-40 cursor-not-allowed' 
-                              : 'cursor-pointer'
-                          }`}
-                        >
-                          {user.isActive ? 'Deactivate' : 'Activate'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         <div className="p-3 border-t border-gray-200 bg-gray-50">
           <div className="flex flex-wrap items-center gap-3 text-[10px] text-gray-500">
